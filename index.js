@@ -1,14 +1,14 @@
 import express from "express";
-import { connectDb } from "./config/dbConnection.js";
+import { connectDb } from "./src/config/dbConnection.js";
 import cors from "cors";
 // *********** All-Routes *************
-import studentRoutes from "./routes/student.routes.js";
-import attendanceRoutes from './routes/attendance.routes.js'
-import auth from './routes/auth.routes.js'
-import teacherRoutes from "./routes/teacher.routes.js"
-import adminRoutes from "./routes/admin.routes.js"
-import monthclassRoutes from "./routes/monthclass.routes.js"
-import utilsRoutes from "./routes/utils.routes.js"
+import studentRoutes from "./src/routes/student.routes.js";
+import attendanceRoutes from './src/routes/attendance.routes.js'
+import auth from './src/routes/auth.routes.js'
+import teacherRoutes from "./src/routes/teacher.routes.js"
+import adminRoutes from "./src/routes/admin.routes.js"
+import monthclassRoutes from "./src/routes/monthclass.routes.js"
+import utilsRoutes from "./src/routes/utils.routes.js"
 import dotenv from "dotenv"
 // *********** All-Routes *************
 dotenv.config();
