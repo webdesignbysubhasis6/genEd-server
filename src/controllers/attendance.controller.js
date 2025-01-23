@@ -1,5 +1,6 @@
 import Attendance from "../models/attendance.model.js";
 import Student from "../models/students.model.js";
+import MonthClass from "../models/monthclass.model.js";
 
 // Controller function to get attendance by semester and month
 export const getAttendanceBySemesterAndMonth = async (req, res) => {
@@ -116,58 +117,83 @@ export const deleteAttendance=async(req,res)=>{
 
 export const getMonthlyAttendance = async (req, res) => {
   try {
-    const { semester,month } = req.query;
+    const { semester, month } = req.query; // Example: semester=7&month=01/2025
 
-    // Extract the month and year from the date string (e.g., "11/2024")
-    // .[month, year] = date.split("/").map(Number);
-
-    // Find attendance records for the specified month/year and semester
-    const attendanceRecords = await Attendance.aggregate([
+    // Step 1: Fetch the last 7 active days from monthClasses
+    const activeDays = await MonthClass.aggregate([
       {
         $match: {
-          date: month, // Filter attendance by month/year
-          present: true,
+          date: month, // Match the specified month
+          occurence: true, // Only consider active days
         },
       },
       {
-        $lookup: {
-          from: "students",
-          localField: "studentId",
-          foreignField: "id",
-          as: "studentInfo",
-        },
+        $sort: { day: -1 }, // Sort by day in descending order
       },
       {
-        $match: {
-          "studentInfo.semester": semester, // Filter by semester
-        },
-      },
-      {
-        $group: {
-          _id: "$day", // Group by day within the specified month
-          presentCount: { $sum: 1 },
-        },
-      },
-      {
-        $sort: { _id: -1 }, // Sort by day in descending order (latest first)
-      },
-      {
-        $limit: 7, // Limit results to the last 7 days
+        $limit: 7, // Limit to the last 7 days
       },
       {
         $project: {
           _id: 0,
-          day: "$_id",
-          presentCount: "$presentCount",
+          day: 1, // Only include the day field
         },
       },
     ]);
 
-    res.status(200).json(attendanceRecords);
+    // Extract the list of active days
+    const days = activeDays.map((record) => record.day);
+
+    // Step 2: Count the present students for each active day from attendances
+    const attendanceRecords = await Attendance.aggregate([
+      {
+        $match: {
+          day: { $in: days }, // Filter by the active days
+          date: month, // Match the specified month
+          present: true, // Only consider present records
+        },
+      },
+      {
+        $lookup: {
+          from: "students", // Join with the students collection
+          localField: "studentId", // Field in attendances
+          foreignField: "id", // Field in students
+          as: "studentInfo",
+        },
+      },
+      {
+        $unwind: "$studentInfo", // Unwind the studentInfo array
+      },
+      {
+        $group: {
+          _id: "$day", // Group by day
+          presentCount: { $sum: 1 }, // Count the number of present students
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          day: "$_id", // Rename _id to day
+          presentCount: 1, // Include presentCount
+        },
+      },
+    ]);
+
+    // Step 3: Ensure the order of results matches the active days order
+    const result = days.map((day) => {
+      const record = attendanceRecords.find((r) => r.day === day);
+      return {
+        day,
+        presentCount: record ? record.presentCount : 0, // Default to 0 if no record exists
+      };
+    });
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 export const getAttendanceByStudentAndMonth = async (req, res) => {
   try {
