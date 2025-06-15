@@ -2,9 +2,54 @@ import Student from "../models/students.model.js";
 import bcrypt from "bcrypt";
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import cloudinary from "../utils/cloudinary.js";
+import fs from "fs";
 
 // Load environment variables
 dotenv.config();
+
+export const updateStudentProfileImage = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    // Check for file and id
+    if (!id || !req.file) {
+      return res.status(400).json({ message: "Student ID and image file are required" });
+    }
+
+    // Upload image to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "students/profile_images",
+    });
+
+    // Remove file from server after upload
+    fs.unlinkSync(req.file.path);
+
+    // Update the student document with the image URL
+    const updatedStudent = await Student.findOneAndUpdate(
+      { id },
+      { image: result.secure_url },
+      { new: true }
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    return res.status(200).json({
+      message: "Profile image updated successfully",
+      imageUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error("Error updating profile image:", error);
+    return res.status(500).json({
+      message: "Failed to update profile image",
+      error: error.message,
+    });
+  }
+};
+
+
 export const addStudent = async (req, res) => {
   try {
     console.log(req.body);

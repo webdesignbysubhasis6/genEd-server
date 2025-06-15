@@ -2,8 +2,48 @@ import Teacher from "../models/teacher.model.js"; // Adjust path as per your pro
 import nodemailer from "nodemailer";
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt'
+import cloudinary from "../utils/cloudinary.js";
+import fs from "fs";
 // Load environment variables
 dotenv.config();
+
+
+export const updateTeacherProfileImage = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    if (!id || !req.file) {
+      return res.status(400).json({ message: "Teacher ID and image file are required" });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "teachers/profile_images",
+    });
+
+    fs.unlinkSync(req.file.path);
+
+    const updatedTeacher = await Teacher.findOneAndUpdate(
+      { id },
+      { image: result.secure_url },
+      { new: true }
+    );
+
+    if (!updatedTeacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    return res.status(200).json({
+      message: "Profile image updated successfully",
+      imageUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error("Error updating teacher profile image:", error);
+    return res.status(500).json({
+      message: "Failed to update profile image",
+      error: error.message,
+    });
+  }
+};
 export const addTeacher = async (req, res) => {
   try {
     console.log(req.body);

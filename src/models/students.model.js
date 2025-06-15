@@ -7,6 +7,10 @@ const studentSchema = new mongoose.Schema(
       required: true,
       unique:true,
     },
+    image: {
+      type: String,
+      default: "",
+    },
     name: {
       type: String,
       required:true,

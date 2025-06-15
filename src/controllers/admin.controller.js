@@ -1,5 +1,45 @@
 import Admin from "../models/admin.model.js"; // Adjust the path to your admin model
 import bcrypt from 'bcrypt'
+import cloudinary from "../utils/cloudinary.js";
+import fs from "fs";
+
+export const updateAdminProfileImage = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    if (!id || !req.file) {
+      return res.status(400).json({ message: "Admin ID and image file are required" });
+    }
+
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "admins/profile_images",
+    });
+
+    fs.unlinkSync(req.file.path);
+
+    const updatedAdmin = await Admin.findOneAndUpdate(
+      { id },
+      { image: result.secure_url },
+      { new: true }
+    );
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    return res.status(200).json({
+      message: "Profile image updated successfully",
+      imageUrl: result.secure_url,
+    });
+  } catch (error) {
+    console.error("Error updating admin profile image:", error);
+    return res.status(500).json({
+      message: "Failed to update profile image",
+      error: error.message,
+    });
+  }
+};
+
 export const addAdmin = async (req, res) => {
   try {
     // console.log(req.body);
